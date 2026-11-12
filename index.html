@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SHIFT: Surface-aware High-speed Integration For TSDFs</title>
+<meta name="description" content="SHIFT compresses flat depth regions into weighted super-rays and freezes converged flat voxels, cutting TSDF integration cost by 1.42 to 4.07x over Voxfield. WACV 2027.">
+<meta property="og:title" content="SHIFT: Surface-aware High-speed Integration For TSDFs">
+<meta property="og:description" content="Accepted to WACV 2027. Planar structure as a source of computational savings for real-time TSDF/ESDF mapping.">
+<meta property="og:type" content="website">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css?v=20261028b">
+<script>
+  // Theme before first paint: saved choice, else the OS preference.
+  (function(){
+    var t=null;
+    try{t=localStorage.getItem("shift-theme");}catch(e){}
+    if(!t){t=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}
+    document.documentElement.setAttribute("data-theme",t);
+  })();
+</script>
+</head>
+<body>
+
+<header class="site-header">
+  <nav class="nav">
+    <div class="nav-inner">
+      <a class="nav-name" href="#top"><img src="assets/icon.svg" alt="">SHIFT</a>
+      <div class="nav-links">
+        <a href="#method">Method</a>
+        <a href="#results">Results</a>
+        <a href="#analysis">Analysis</a>
+        <a href="#takeaways">Takeaways</a>
+        <a href="#bibtex">BibTeX</a>
+      </div>
+      <div class="nav-tools">
+        <button class="icon-btn" id="theme-btn" aria-label="Toggle dark mode">
+          <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+          <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.2M12 19.8V22M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M2 12h2.2M19.8 12H22M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"/></svg>
+        </button>
+      </div>
+    </div>
+  </nav>
+</header>
+
+<main id="top">
+
+<!-- ================= HERO ================= -->
+<section class="hero">
+  <span class="badge">WACV 2027</span>
+  <h1 class="proj"><span class="tint">SHIFT</span></h1>
+  <p class="proj-sub"><u>S</u>urface-aware <u>H</u>igh-speed <u>I</u>ntegration <u>F</u>or <u>T</u>SDFs</p>
+
+  <div class="authors">
+    <span class="au">Ayaan Choudhury<sup>1,†</sup></span>
+    <span class="au">Lokender Tiwari<sup>2</sup></span>
+  </div>
+  <div class="affils">
+    <span><sup>1</sup>Indian Institute of Technology Jodhpur</span>
+    <span><sup>2</sup>BotLab Dynamics</span>
+    <span class="note"><sup>†</sup>Work done during an internship at BotLab Dynamics</span>
+  </div>
+
+  <div class="venue">
+    <p class="v-top">ACCEPTED TO</p>
+    <p class="v-main">WACV 2027</p>
+    <p class="v-full">IEEE/CVF Winter Conference on Applications of Computer Vision</p>
+  </div>
+
+  <div class="links">
+    <a class="primary" href="https://arxiv.org/abs/2609.06547" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>
+      Paper (arXiv)
+    </a>
+    <a href="https://github.com/ayaancdry/shift-tsdf" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.3.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11.4 11.4 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.2c0 .3.2.7.8.6A11.5 11.5 0 0 0 23.5 12C23.5 5.7 18.3.5 12 .5z"/></svg>
+      Code (GitHub)
+    </a>
+    <a href="#bibtex">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg>
+      BibTeX
+    </a>
+  </div>
+
+  <!-- teaser: SHIFT's Flat reconstruction coloured by the classifier -->
+  <div class="teaser wide">
+    <div class="controls">
+      <div class="seg" id="teaser-mode" role="group" aria-label="Teaser colouring">
+        <button aria-pressed="true" data-mode="cls">Surface class</button>
+        <button aria-pressed="false" data-mode="rgb">Appearance</button>
+        <button aria-pressed="false" data-mode="shaded">Geometry</button>
+      </div>
+    </div>
+    <div class="viewer" id="teaser-viewer"></div>
+    <div class="legend" id="teaser-legend">
+      <span><i style="background:var(--flat)"></i>Flat</span>
+      <span><i style="background:var(--edge)"></i>Edge</span>
+      <span><i style="background:var(--curved)"></i>Curved</span>
+      <span><i style="background:var(--unknown)"></i>Unclassified</span>
+    </div>
+  </div>
+
+  <p class="tldr">Much of an indoor depth frame is <b>wall, floor and ceiling</b>, yet a TSDF integrator re-fuses every one of those pixels on every frame, long after the voxels behind them have converged. SHIFT labels each pixel <b>flat, edge or curved</b> from depth alone, compresses the flat pixels of each image tile into <b>one weighted super-ray</b> per plane, and <b>freezes</b> the gradient of flat voxels once their weight crosses a threshold.</p>
+
+  <div class="stats">
+    <div class="stat"><div class="num">1.42–4.07<small>×</small></div><div class="lbl">lower TSDF integration cost than Voxfield, across RGB-D and LiDAR sequences and voxel sizes</div></div>
+    <div class="stat"><div class="num">≤ 0.19<small> cm</small></div><div class="lbl">difference in RGB-D mesh error from Voxfield; TSDF RMSE improves on real LiDAR</div></div>
+    <div class="stat"><div class="num">up to 28<small>%</small></div><div class="lbl">smaller ESDF layer with a compact voxel layout; no stored distance changes</div></div>
+  </div>
+</section>
+
+<!-- ================= METHOD ================= -->
+<section id="method">
+  <p class="eyebrow">METHOD</p>
+  <h2 class="sec-h">Turn planar structure into skipped work.</h2>
+  <p class="sec-sub">SHIFT extends Voxfield's non-projective TSDF with three stages per frame. Every stage is conservative: pixels that fail the planarity tests are fused exactly as in Voxfield.</p>
+
+  <div class="stages wide" style="max-width:var(--maxw)">
+    <div class="stage"><div class="n">01</div><h4>Classify</h4><p>Label every pixel of the organized cloud <span style="color:var(--flat);font-weight:600">flat</span>, <span style="color:var(--edge);font-weight:600">edge</span> or <span style="color:var(--curved);font-weight:600">curved</span> from 3D depth geometry. No RGB, no learning.</p></div>
+    <div class="stage"><div class="n">02</div><h4>Bundle</h4><p>Collapse the flat pixels of each (tile, plane) group into one super-ray snapped to the plane, carrying their summed weight.</p></div>
+    <div class="stage"><div class="n">03</div><h4>Freeze &amp; skip</h4><p>Flat voxels past a weight threshold stop re-estimating their gradient and skip updates that already agree.</p></div>
+    <div class="stage"><div class="n">04</div><h4>Compact ESDF</h4><p>32-bit wavefront indices and a packed voxel layout shrink the ESDF layer by 8 to 28%.</p></div>
+  </div>
+
+  <h3 class="sub-h">Try it: classification and bundling on a depth frame</h3>
+  <p class="sec-sub" style="margin-bottom:22px">A synthetic 320×240 depth frame of a room with a box and a ball, processed live in your browser by a JavaScript port of SHIFT's RGB-D classifier and bundling step. Thresholds are the values used in the paper's RGB-D runs. Step through the stages, change the cell size <i>P</i>, or add sensor noise.</p>
+
+  <div class="lab wide" style="max-width:1000px">
+    <div>
+      <div class="lab-canvas">
+        <canvas id="lab-canvas" width="640" height="480" aria-label="Synthetic depth frame processed by the SHIFT classifier"></canvas>
+      </div>
+      <div class="legend" id="lab-legend" style="justify-content:flex-start;margin-top:10px"></div>
+    </div>
+    <div class="lab-side">
+      <div class="steps" id="lab-steps">
+        <button aria-pressed="true" data-step="0"><span class="k">1</span><span><b>Depth frame</b><span class="d">An organized point cloud on the image grid. A LiDAR scan is first projected into a range image of the same form, so both sensors share the pipeline.</span></span></button>
+        <button aria-pressed="false" data-step="1"><span class="k">2</span><span><b>Normals &amp; occlusion mask</b><span class="d">Per-pixel normals come from finite-difference cross products. A pixel joins the occlusion mask if its depth jumps by more than max(4 cm, 0.006 z²) to at least two of its four neighbours. Occlusion pixels are excluded from the plane fits and later fused as curved. They are not edges.</span></span></button>
+        <button aria-pressed="false" data-step="2"><span class="k">3</span><span><b>Cell plane fits</b><span class="d">The image is cut into P×P cells. A cell is a flat candidate if at least half of it is valid, it contains no occlusion pixel, and its plane-fit error λ<sub>0</sub> ≤ (1.6 σ(z))², with σ(z) = max(4 mm, 0.002 z²).</span></span></button>
+        <button aria-pressed="false" data-step="3"><span class="k">4</span><span><b>Region growing</b><span class="d">Candidate cells merge breadth-first into plane segments. A neighbour must agree in normal (within 0.3 rad), lie on the plane (within 3σ), and keep the refitted plane within (1.3σ)². Regions with fewer than 6 cells are dropped, which is what keeps the ball curved.</span></span></button>
+        <button aria-pressed="false" data-step="4"><span class="k">5</span><span><b>Creases</b><span class="d">Where two segments meet at more than 0.45 rad, the shared border, and any cell straddling the corner, becomes <b style="color:var(--edge)">edge</b>. Distinct planes are then never bundled or frozen across a corner.</span></span></button>
+        <button aria-pressed="false" data-step="5"><span class="k">6</span><span><b>Labels &amp; super-rays</b><span class="d">Final labels, in priority order: crease is <b style="color:var(--edge)">edge</b>, then segment pixels are <b style="color:var(--flat)">flat</b>, and everything else is <b style="color:var(--curved)">curved</b>. The flat pixels of each (tile, segment) group become one super-ray through their weighted mean, snapped onto the plane, carrying the summed weight. Edge and curved pixels stay individual rays.</span></span></button>
+      </div>
+      <div class="readout" id="lab-readout">
+        <div><div class="k">pixels</div><div class="v" data-k="px">–</div></div>
+        <div><div class="k">plane segments</div><div class="v" data-k="seg">–</div></div>
+        <div><div class="k" style="color:var(--flat)">flat</div><div class="v" data-k="flat">–</div></div>
+        <div><div class="k" style="color:var(--edge)">edge</div><div class="v" data-k="edge">–</div></div>
+        <div><div class="k" style="color:var(--curved)">curved</div><div class="v" data-k="curved">–</div></div>
+        <div><div class="k">rays after bundling</div><div class="v" data-k="rays">–</div></div>
+      </div>
+      <div class="lab-ctl">
+        <label class="ctl">cell P <input type="range" id="lab-p" min="8" max="16" step="4" value="12"><output id="lab-p-out">12</output></label>
+        <label class="ctl">noise <input type="range" id="lab-noise" min="0" max="4" step="1" value="2"><output id="lab-noise-out">0.5σ</output></label>
+      </div>
+      <p class="cap toy-note">Noise is Gaussian depth noise as a fraction of the classifier's σ(z) model. When the noise approaches the model, cells fail the tests and the classifier falls back to curved, so those pixels are fused individually, exactly as in Voxfield.</p>
+    </div>
+  </div>
+
+  <figure class="figure">
+    <div class="card"><img src="assets/figures/superray.svg" alt="Paper Figure 1: coplanar bundling on one tile, Voxfield versus SHIFT" loading="lazy"></div>
+    <figcaption><b>Coplanar bundling on one tile</b> (paper Fig. 1). (a) In Voxfield, each flat pixel is projected and weighted with its normal <i>n<sub>j</sub></i>; only the first ray per cell is cast. (b) SHIFT projects the residual-weighted mean <i>p̄</i> onto the segment plane and casts once with weight <i>ω<sub>G</sub></i> = Σ<i>ω<sub>i</sub></i> and segment normal <i>n<sub>s</sub></i>. Shading marks each cast's truncation band 2τ.</figcaption>
+  </figure>
+
+  <h3 class="sub-h">Freezing and skipping, one voxel strip at a time</h3>
+  <p class="sec-sub" style="margin-bottom:22px">A sensor sweeps past a flat wall. Voxfield's fast integrator casts only the first ray that ends in each half-voxel cell. SHIFT casts one super-ray per image tile, which carries the tile's summed weight and updates only the voxel it crosses. The tiles move with the image, so voxels between super-rays are filled in on later frames. A flat voxel freezes its gradient once its weight reaches <i>W</i><sub>f</sub> = 5, which a single super-ray can do. From then on, a new distance within δ<sub>skip</sub> = 1 cm of the stored one skips the weighted average.</p>
+
+  <div class="fuse wide" style="max-width:1000px">
+    <div class="fuse-canvas"><canvas id="fuse-canvas" width="640" height="250" aria-label="Animation of ray casting, voxel freezing and update skipping"></canvas></div>
+    <div class="lab-side">
+      <div class="rule">
+        <span class="c">// freeze rule</span><br>
+        freeze(V<sub>i</sub>) ⇔ S<sub>i</sub>=FLAT ∧ W<sub>i</sub> ≥ W<sub>f</sub> ∧ ‖g<sub>i</sub>‖ &gt; 0<br>
+        <span class="c">// on a frozen voxel</span><br>
+        |d<sub>ijk</sub> − D<sub>i</sub>| &lt; δ<sub>skip</sub> ⇒ skip; else update D<sub>i</sub>, W<sub>i</sub> (gradient stays frozen)
+      </div>
+      <div class="controls" style="justify-content:flex-start;margin:0">
+        <div class="seg" id="fuse-mode" role="group" aria-label="Integration mode">
+          <button aria-pressed="false" data-mode="vf">Voxfield</button>
+          <button aria-pressed="true" data-mode="shift">SHIFT</button>
+        </div>
+        <button class="play" id="fuse-play">▶ Play</button>
+        <button class="play" id="fuse-reset">Reset</button>
+      </div>
+      <div class="readout" id="fuse-readout">
+        <div><div class="k">frame</div><div class="v" data-k="frame">0</div></div>
+        <div><div class="k">rays cast</div><div class="v" data-k="cast">0</div></div>
+        <div><div class="k">gradient re-estimates</div><div class="v" data-k="grad">0</div></div>
+        <div><div class="k">distance updates</div><div class="v" data-k="upd">0</div></div>
+        <div><div class="k">updates skipped</div><div class="v" data-k="skip">0</div></div>
+      </div>
+      <div class="legend" style="justify-content:flex-start;margin:0">
+        <span><i style="background:var(--accent)"></i>updated this frame</span>
+        <span><i style="background:var(--flat)"></i>frozen</span>
+        <span><i style="background:var(--surface-2);border:1px solid var(--line-strong)"></i>skipped</span>
+      </div>
+      <p class="cap">Illustration of the rules in Sec. 3.3: 48 pixels, tile P = 12, sensor weight 1 per pixel, 6 mm depth noise. Only one row of surface voxels is drawn; a real cast also updates the voxels along its ray inside the truncation band 2τ. Only an occupancy change during ESDF updates clears a freeze.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= RESULTS ================= -->
+<section id="results">
+  <p class="eyebrow">RESULTS</p>
+  <h2 class="sec-h">Same maps, a fraction of the integration work.</h2>
+  <p class="sec-sub">Final meshes at the representative voxel size from the paper's runs, Voxfield next to SHIFT. The two views orbit together. Drag to rotate, scroll to zoom, right-drag to pan, and lower the cut plane to look inside.</p>
+
+  <div class="wide">
+    <div class="controls">
+      <div class="seg tabs" id="ds-tabs" role="tablist" aria-label="Dataset">
+        <button aria-pressed="true" data-ds="flat">Flat</button>
+        <button aria-pressed="false" data-ds="cow">Cow &amp; Lady</button>
+        <button aria-pressed="false" data-ds="tum">TUM fr1/room</button>
+        <button aria-pressed="false" data-ds="nc">Newer College</button>
+      </div>
+    </div>
+    <div class="controls">
+      <div class="seg" id="res-mode" role="group" aria-label="Colouring">
+        <button aria-pressed="true" data-mode="rgb">Appearance</button>
+        <button aria-pressed="false" data-mode="shaded">Geometry</button>
+        <button aria-pressed="false" data-mode="cls">Surface class</button>
+        <button aria-pressed="false" data-mode="err">Mesh→GT error</button>
+      </div>
+      <label class="ctl">cut height <input type="range" id="res-clip" min="0" max="1" step="0.005" value="1"><output id="res-clip-out">–</output></label>
+      <label class="ctl" id="res-cap-wrap" hidden>error cap <input type="range" id="res-cap" min="1" max="20" step="0.5" value="3.5"><output id="res-cap-out">3.5 cm</output></label>
+    </div>
+    <div class="pair">
+      <div class="viewer" id="res-vf"></div>
+      <div class="viewer" id="res-ours"></div>
+    </div>
+    <div class="legend" id="res-legend-cls" hidden>
+      <span><i style="background:var(--flat)"></i>Flat</span>
+      <span><i style="background:var(--edge)"></i>Edge</span>
+      <span><i style="background:var(--curved)"></i>Curved</span>
+      <span><i style="background:var(--unknown)"></i>Unclassified</span>
+    </div>
+    <div class="colorbar" id="res-colorbar" hidden>
+      <span>0</span><canvas class="ramp" id="res-ramp" width="240" height="10"></canvas><span id="res-ramp-max">3.5 cm</span>
+      <span class="cb-trunc"><i></i>&gt; <span id="res-trunc">20 cm</span> from GT, excluded from the mean</span>
+    </div>
+    <div class="metrics" id="res-metrics"></div>
+    <p class="cap ds-note" id="res-note"></p>
+  </div>
+</section>
+
+<!-- ================= ANALYSIS ================= -->
+<section id="analysis">
+  <p class="eyebrow">ANALYSIS</p>
+  <h2 class="sec-h">Faster at every voxel size, on every sequence.</h2>
+  <p class="sec-sub">Per-frame runtime of Voxfield and SHIFT across the voxel-size sweep (paper Table 3). Hover for values. The gain is largest on the most planar scene and smallest where planar structure is scarce.</p>
+
+  <div class="wide">
+    <div class="controls">
+      <div class="seg" id="stage-tabs" role="group" aria-label="Pipeline stage">
+        <button aria-pressed="true" data-stage="tsdf">TSDF integration</button>
+        <button aria-pressed="false" data-stage="backend">Backend</button>
+        <button aria-pressed="false" data-stage="e2e">End-to-end</button>
+      </div>
+    </div>
+    <div class="charts" id="sweep-charts"></div>
+    <div class="series-legend">
+      <span><i style="background:var(--vf)"></i>Voxfield</span>
+      <span><i style="background:var(--ours)"></i>SHIFT (ours)</span>
+    </div>
+    <details class="tbl">
+      <summary>show as table ▾</summary>
+      <div class="wrap" id="sweep-table"></div>
+    </details>
+  </div>
+
+  <h3 class="sub-h">Where the savings come from</h3>
+  <p class="sec-sub" style="margin-bottom:18px">The TSDF integrator runs once per surviving ray. Bundling removes most rays before fusion, and the speedup follows how much of each frame the classifier labels flat.</p>
+  <div class="two wide" style="max-width:1000px">
+    <div class="panel">
+      <h5>Rays per frame at the representative voxel</h5>
+      <span class="cap">input pixels / returns → rays after bundling</span>
+      <div class="funnel" id="funnel"></div>
+      <p class="cap">Flat: 1.7 k of the rays are super-rays that absorb the flat majority. Newer College: 645 super-rays.</p>
+    </div>
+    <div class="panel">
+      <h5>Flat fraction vs. TSDF speedup</h5>
+      <span class="cap">share of pixels labelled flat · TSDF speedup at the representative voxel</span>
+      <div id="scatter"></div>
+      <p class="cap">Newer College is 70.6% flat but gains less, because a spherical range image has fewer pixels to bundle than a dense depth frame.</p>
+    </div>
+  </div>
+  <div class="panel wide" style="max-width:1000px;margin-top:14px">
+    <h5>ESDF layer memory (MB) at the representative voxel</h5>
+    <span class="cap">compact layout · ratio = SHIFT / Voxfield</span>
+    <div id="memory"></div>
+  </div>
+</section>
+
+<!-- ================= TAKEAWAYS ================= -->
+<section id="takeaways">
+  <p class="eyebrow">TAKEAWAYS</p>
+  <h2 class="sec-h">What SHIFT shows</h2>
+  <p class="sec-sub">&nbsp;</p>
+  <div class="cards">
+    <div class="card3"><div class="n">01</div><h4>Planar structure is a compute budget.</h4><p>On planar-dominated scenes, much of the per-frame integration work is redundant. It can be skipped outright, which complements making each operation cheaper.</p></div>
+    <div class="card3"><div class="n">02</div><h4>Conservative by construction.</h4><p>Pixels that fail the planarity tests are fused exactly as in Voxfield, and a measurement that disagrees by more than the skip tolerance still updates the distance.</p></div>
+    <div class="card3"><div class="n">03</div><h4>One pipeline for RGB-D and LiDAR.</h4><p>The classifier needs no RGB and no learned semantics. LiDAR scans become range images and follow the same path, from synthetic rooms to an outdoor quad.</p></div>
+  </div>
+</section>
+
+<!-- ================= BIBTEX ================= -->
+<section id="bibtex">
+  <p class="eyebrow">CITATION</p>
+  <h2 class="sec-h">BibTeX</h2>
+  <p class="sec-sub">&nbsp;</p>
+  <div class="bib">
+<pre id="bib-text">@article{choudhury2026shift,
+  title={SHIFT: Surface-aware High-speed Integration For TSDFs},
+  author={Choudhury, Ayaan and Tiwari, Lokender},
+  journal={arXiv preprint arXiv:2609.06547},
+  year={2026}
+}</pre>
+    <button class="play" id="bib-copy">Copy</button>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <p>SHIFT · WACV 2027 · <a href="https://arxiv.org/abs/2609.06547">arXiv</a> · <a href="https://github.com/ayaancdry/shift-tsdf">GitHub</a></p>
+  <p>Page design adapted from the <a href="https://haofeixu.github.io/pointdit/">PointDiT</a> project page.</p>
+</footer>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module" src="assets/js/main.js?v=20261028b"></script>
+</body>
+</html>
